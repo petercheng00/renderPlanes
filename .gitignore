@@ -1,6 +1,10 @@
-/*
+*
 
 !*/
 !.gitignore
-!.cpp
-!.h
+!*.m
+!*.c
+!*.model
+!*.rpinput
+!*.cpp
+!*.h
