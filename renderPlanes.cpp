@@ -5,6 +5,7 @@
 string modelFile = "";
 string mapFile = "";
 string plyFile = "";
+string plyMapFile = "";
 string iveFile = "";
 string outputFile = "";
 
@@ -171,7 +172,7 @@ void doEarClipping( Geometry* planeGeometry, Vec2Array* planeVertices, bool make
 			}
 		}
 	}
-	cout << "Num pieces: " << polygons.size() << endl;
+	//cout << "Num pieces: " << polygons.size() << endl;
 	for (int i = 0; i < polygons.size(); ++i){
 		planeGeometry->addPrimitiveSet(polygons[i]);
 	}
@@ -192,8 +193,8 @@ void addLighting(Group* root) {
 	ref_ptr<LightSource> lightSource = new LightSource;
 	Light* light = lightSource->getLight();
 	light->setLightNum(0);
-	light->setPosition(osg::Vec4(0.0f,0.0f,0.0f,1.0f));
-	light->setAmbient(osg::Vec4(0.7f, 0.7f,0.7f,1.0f));
+	light->setPosition(osg::Vec4(0.0f,0.0f,10.0f,1.0f));
+	light->setAmbient(osg::Vec4(1.0f, 1.0f,1.0f,1.0f));
 	light->setDiffuse(osg::Vec4(0.0f, 0.0f,0.0f,1.0f));
 	light->setSpecular(osg::Vec4(0.0f,0.0f,0.0f,1.0f));
 	root->addChild(lightSource);
@@ -203,6 +204,7 @@ void addLighting(Group* root) {
 
 void applyColors(Group* root, bool showPieces){
 	int numPlanes = root->getNumChildren();
+	srand(time(NULL));
 	for (int i = 0; i < numPlanes; i++){
 		osg::Vec4Array* colors = new osg::Vec4Array;
 		Geode* currGeode = (Geode*)root->getChild(i);
@@ -229,6 +231,7 @@ void applyColors(Group* root, bool showPieces){
 void applyTextures(Group* root, vector<string>& fileVect, vector<Vec2Array*>& coordVect) {
 
 	for (int i = 0; i < fileVect.size(); i ++ ){
+		cout << "texturing " << i << "/" << fileVect.size() << endl;
 		if (fileVect[i] == ""){
 			continue;
 		}
@@ -290,6 +293,8 @@ void parseMapFile(string mapFile, vector<string>& fileVect, vector<Vec2Array*>& 
 		else {
 			int numCoords = atoi(currToken.c_str());
 			inFile >> imageFile;
+			cerr << numCoords << endl;
+			cerr << imageFile << endl;
 			fileVect.push_back(imageFile);
 			Vec2Array* currCoords = new Vec2Array();
 			for (int j = 0; j < numCoords; j++ ){
@@ -309,7 +314,7 @@ void parsePlyFile(Group* root)
 {
 	ifstream inFile(plyFile);
 	if (!inFile.is_open()){ cerr << "error opening ply file" << endl;}
-	
+	cout << "parsing ply file..." << endl;	
 	int numVerts;
 	int numTris;
 	int numPlanes;
@@ -339,25 +344,97 @@ void parsePlyFile(Group* root)
 	}
 	int i1, i2, i3, i4;
 	double v1, v2, v3;
+	cout << "reading verts" << endl;
 	for (int i = 0; i < numVerts; ++i)
 	{
+
 		inStream >> v1 >> v2 >> v3;
 		verts->push_back(Vec3(v1*1000, v2*1000, v3*1000));
 	}
 
+	vector<vector<int>> triangles;
+	cout << "reading tris" << endl;
 	for (int i = 0; i < numTris; ++i)
-	{	
+	{
 		inStream >> i1 >> i2 >> i3 >> i4;
-		Geode* triGeode = new Geode();
-		Geometry* triGeometry = new Geometry();
-		triGeode->addDrawable( triGeometry );
-		root->addChild( triGeode );
-		Vec3Array* triVertices = new Vec3Array();
-		triVertices->push_back( verts->at(i1) );
-		triVertices->push_back( verts->at(i2) );
-		triVertices->push_back( verts->at(i3) );
-		triGeometry->setVertexArray(triVertices);
+		vector<int> triangle;
+		triangle.push_back(i2);
+		triangle.push_back(i3);
+		triangle.push_back(i4);
+		triangles.push_back(triangle);
 	}
+
+	cout << "reading regions" << endl;
+	for (int i = 0; i < numPlanes; ++i)
+	{
+		Geode* triGeode = new Geode();
+		root->addChild( triGeode );
+		Geometry* triGeometry = new Geometry();
+		triGeode->addDrawable(triGeometry);
+
+
+		Vec3Array* triVertices = new Vec3Array();
+		map<int, Vec3> uniqueVerts;
+		map<int, Vec3>::iterator iter;
+
+		//read in and ignore plane equation
+		inStream >> v1 >> v1 >> v3 >> v1 >> v1 >> v1;
+		inStream >> i1;
+		if (v3 >= 0.5) {
+			triGeode->setNodeMask(0x00000001);
+		}
+		else if (v3 <= -0.5) {
+			triGeode->setNodeMask(0x00000002);
+		}
+		else {
+			triGeode->setNodeMask(0x00000004);
+		}
+		vector<vector<int>> planeTris;
+
+		//load in the vertices for all triangles for this plane
+		for (int j = 0; j < i1; ++j)
+		{
+			inStream >> i2;
+			vector<int> tri = triangles[i2];
+			uniqueVerts[tri[0]] = verts->at(tri[0]);
+			uniqueVerts[tri[1]] = verts->at(tri[1]);
+			uniqueVerts[tri[2]] = verts->at(tri[2]);
+
+			planeTris.push_back(tri);
+		}
+
+		//skip over edges
+		inStream >> i1;
+		for (int j = 0; j < i1; ++j)
+		{
+			inStream >> i2;
+		}
+
+		//create triangle geometry
+		for (int j = 0; j < planeTris.size(); ++j)
+		{
+			vector<int> tri = planeTris[j];
+			DrawElementsUInt* currTriangle = new DrawElementsUInt( PrimitiveSet::POLYGON, 0);
+
+			iter = uniqueVerts.find(tri[0]);
+			currTriangle->push_back(distance(uniqueVerts.begin(), iter));
+			iter = uniqueVerts.find(tri[1]);
+			currTriangle->push_back(distance(uniqueVerts.begin(), iter));
+			iter = uniqueVerts.find(tri[2]);
+			currTriangle->push_back(distance(uniqueVerts.begin(), iter));
+			
+			
+			triGeometry->addPrimitiveSet(currTriangle);
+		}
+
+		for (iter = uniqueVerts.begin(); iter != uniqueVerts.end(); ++iter)
+		{
+			triVertices->push_back(iter->second);
+		}
+		triGeometry->setVertexArray(triVertices);
+
+	}
+	inFile.close();
 }
 
 void parseModelFile(Group* root, bool makeConvex) {
@@ -380,10 +457,10 @@ void parseModelFile(Group* root, bool makeConvex) {
 		double nx,ny,nz,d; 
 		inFile >> nx >> ny >> nz >> d; 
 		//if normal up or down, floor or ceiling, so set a mask
-		if (nz == 1.0) {
+		if (nz >= 0.5) {
 			planeGeode->setNodeMask(0x00000001);
 		}
-		else if (nz == -1.0) {
+		else if (nz <= -0.5) {
 			planeGeode->setNodeMask(0x00000002);
 		}
 		else {
@@ -397,10 +474,20 @@ void parseModelFile(Group* root, bool makeConvex) {
 		}
 
 		planeGeometry->setVertexArray( planeVertices );
+		DrawElementsUInt* convexPoly = new DrawElementsUInt(PrimitiveSet::POLYGON, 0 );
 
+		for (int j = 0; j < numDelimitingPoints; ++j)
+		{
+			convexPoly->push_back(j);
+		}
+
+		//planeGeometry->addPrimitiveSet(convexPoly);
 		
 		//dotransformation to make horizontal
 		Vec3 normal = ((planeVertices->at(1) - planeVertices->at(0)) ^ (planeVertices->at(2) - planeVertices->at(1)));
+		//Vec3 normal2 = Vec3(nx, ny, nz);
+		normal.normalize();
+
 		int v = 2;
 		while (normal.length() == 0) {
 			if (v == planeVertices->size()-1) {
@@ -464,6 +551,7 @@ void parseModelFile(Group* root, bool makeConvex) {
 			planeVertices->at(j)[2] = zVal;
 			planeVertices->at(j) = unRotateMat * planeVertices->at(j);
 		}
+		
 	
 	}
 	inFile.close(); 
@@ -525,6 +613,11 @@ int main(int argc, char** argv)
 				cout << "Reading map file:" << endl;
 				cout << fileName << endl;
 			}
+			else if (extension == "plymap") {
+				plyMapFile = fileName;
+				cout << "Reading ply map file:" << endl;
+				cout << fileName << endl;
+			}
 			else if (extension == "ive") {
 				iveFile = fileName;
 				cout << "Adding external ive file:" << endl;
@@ -553,27 +646,29 @@ int main(int argc, char** argv)
     Group* root = new Group();
     vector<string> planeToImageFile;
     vector<Vec2Array*> planeToImageCoords;
-	parseMapFile(mapFile, planeToImageFile, planeToImageCoords);
 	if (plyFile == "")
 	{
+		parseMapFile(mapFile, planeToImageFile, planeToImageCoords);
 		parseModelFile(root, showConvex);
 	}
 	else
 	{
+		parseMapFile(plyMapFile, planeToImageFile, planeToImageCoords);
 		parsePlyFile(root);
 	}
+	cout << "Done Reading" << endl;
 	if (noTexture){
 		applyColors(root, showTriangles || showConvex);
 	}
 	else{
-	    applyTextures(root, planeToImageFile, planeToImageCoords);
+		//applyColors(root, showTriangles || showConvex);
+		applyTextures(root, planeToImageFile, planeToImageCoords);
 	}
 	addLighting(root);
 	if (iveFile != ""){
 		osg::ref_ptr<Node> otherModel = osgDB::readNodeFile(iveFile);
 		root->addChild(otherModel);
 	}
-
 	if (!noSave){
 		cout << "Saving ive file:" << endl;
 		cout << outputFile << endl;

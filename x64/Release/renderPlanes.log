@@ -1,16 +1,16 @@
-﻿Build started 9/7/2012 2:51:17 PM.
-     1>Project "F:\projects\plane_mapping\renderPlanes\renderPlanes\renderPlanes.vcxproj" on node 2 (build target(s)).
+﻿Build started 3/6/2013 11:28:21 AM.
+     1>Project "D:\projects\renderPlanes\renderPlanes\renderPlanes.vcxproj" on node 2 (build target(s)).
      1>InitializeBuildStatus:
          Creating "x64\Release\renderPlanes.unsuccessfulbuild" because "AlwaysCreate" was specified.
        ClCompile:
          All outputs are up-to-date.
        Link:
          All outputs are up-to-date.
-         renderPlanes.vcxproj -> F:\projects\plane_mapping\renderPlanes\x64\Release\renderPlanes.exe
+         renderPlanes.vcxproj -> D:\projects\renderPlanes\x64\Release\renderPlanes.exe
        FinalizeBuildStatus:
          Deleting file "x64\Release\renderPlanes.unsuccessfulbuild".
          Touching "x64\Release\renderPlanes.lastbuildstate".
-     1>Done Building Project "F:\projects\plane_mapping\renderPlanes\renderPlanes\renderPlanes.vcxproj" (build target(s)).
+     1>Done Building Project "D:\projects\renderPlanes\renderPlanes\renderPlanes.vcxproj" (build target(s)).
 
 Build succeeded.
 
