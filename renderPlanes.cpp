@@ -48,11 +48,6 @@ void doEarClipping( Geometry* planeGeometry, Vec2Array* planeVertices, bool make
 			//if we've tried a lot of points, we just have to give up and make a triangle to allow the process to continue
 			if(curIterations > numPoints + 10)
 			{
-				cerr << "Giving up after " << curIterations << " attempts " << polyList.size() << " remaining vertices" << endl;
-				/*for (int k = 0; k < polyList.size(); k++) {
-					cerr << polyList[k] << endl;
-					cerr << planeVertices->at(polyList[k]).x() << ", " << planeVertices->at(polyList[k]).y() << endl;
-				}*/
 				DrawElementsUInt* currTriangle =
 					new DrawElementsUInt( PrimitiveSet::POLYGON, 0 );
 				currTriangle->push_back(polyList[0]);
@@ -172,7 +167,6 @@ void doEarClipping( Geometry* planeGeometry, Vec2Array* planeVertices, bool make
 			}
 		}
 	}
-	//cout << "Num pieces: " << polygons.size() << endl;
 	for (int i = 0; i < polygons.size(); ++i){
 		planeGeometry->addPrimitiveSet(polygons[i]);
 	}
@@ -190,6 +184,7 @@ Vec2Array* convert3dTo2d( Vec3Array* vertices ) {
 }
 
 void addLighting(Group* root) {
+	cout << "adding lighting" << endl;
 	ref_ptr<LightSource> lightSource = new LightSource;
 	Light* light = lightSource->getLight();
 	light->setLightNum(0);
@@ -231,7 +226,7 @@ void applyColors(Group* root, bool showPieces){
 void applyTextures(Group* root, vector<string>& fileVect, vector<Vec2Array*>& coordVect) {
 
 	for (int i = 0; i < fileVect.size(); i ++ ){
-		cout << "texturing " << i << "/" << fileVect.size() << endl;
+		cout << "\rtexturing " << i << "/" << fileVect.size();
 		if (fileVect[i] == ""){
 			continue;
 		}
@@ -261,6 +256,7 @@ void applyTextures(Group* root, vector<string>& fileVect, vector<Vec2Array*>& co
 		state->setMode(GL_CULL_FACE, osg::StateAttribute::OFF); 
 		currGeode->setStateSet(state);
 	}
+	cout << endl;
 }
 
 
@@ -293,8 +289,6 @@ void parseMapFile(string mapFile, vector<string>& fileVect, vector<Vec2Array*>& 
 		else {
 			int numCoords = atoi(currToken.c_str());
 			inFile >> imageFile;
-			cerr << numCoords << endl;
-			cerr << imageFile << endl;
 			fileVect.push_back(imageFile);
 			Vec2Array* currCoords = new Vec2Array();
 			for (int j = 0; j < numCoords; j++ ){
@@ -313,7 +307,7 @@ void parseMapFile(string mapFile, vector<string>& fileVect, vector<Vec2Array*>& 
 void parsePlyFile(Group* root)
 {
 	ifstream inFile(plyFile);
-	if (!inFile.is_open()){ cerr << "error opening ply file" << endl;}
+	if (!inFile.is_open()){ cerr << "error opening ply file" << endl; return;}
 	cout << "parsing ply file..." << endl;	
 	int numVerts;
 	int numTris;
@@ -394,6 +388,10 @@ void parsePlyFile(Group* root)
 		//load in the vertices for all triangles for this plane
 		for (int j = 0; j < i1; ++j)
 		{
+			if (j%100 == 0 || j == i1-1)
+			{
+				cout << "\rregion " << i+1 << "/" << numPlanes << "\tvert " << j+1 << "/" << i1 << "\t\t\t";
+			}
 			inStream >> i2;
 			vector<int> tri = triangles[i2];
 			uniqueVerts[tri[0]] = verts->at(tri[0]);
@@ -409,10 +407,13 @@ void parsePlyFile(Group* root)
 		{
 			inStream >> i2;
 		}
-
 		//create triangle geometry
 		for (int j = 0; j < planeTris.size(); ++j)
 		{
+			if (j%100 == 0 || j == planeTris.size()-1)
+			{
+				cout << "\rregion " << i+1 << "/" << numPlanes << "\ttri " << j+1 << "/" << planeTris.size() << "\t\t\t";
+			}
 			vector<int> tri = planeTris[j];
 			DrawElementsUInt* currTriangle = new DrawElementsUInt( PrimitiveSet::POLYGON, 0);
 
@@ -434,6 +435,7 @@ void parsePlyFile(Group* root)
 		triGeometry->setVertexArray(triVertices);
 
 	}
+	cout << endl;
 	inFile.close();
 }
 
@@ -590,52 +592,68 @@ bool RPEventHandler::handle(const osgGA::GUIEventAdapter& ea,osgGA::GUIActionAda
 int main(int argc, char** argv)
 {
 	if (argc > 1){
-		ifstream inputFile(argv[1]);
-		outputFile = string(argv[1]);
-		outputFile = outputFile.substr(0, outputFile.find_last_of(".")) + ".ive";
-		string fileName;
-		getline(inputFile, fileName);
-		while(inputFile){
-			size_t l = fileName.find_last_of("."); 
-			string extension = fileName.substr(l+1);
-			if(extension == "model") {
-				modelFile = fileName;
-				cout << "Reading model file:" << endl;
-				cout << fileName << endl;
-			}
-			else if(extension == "ply") {
-				plyFile = fileName;
-				cout << "Reading ply file:" << endl;
-				cout << fileName << endl;
-			}
-			else if (extension == "map") {
-				mapFile = fileName;
-				cout << "Reading map file:" << endl;
-				cout << fileName << endl;
-			}
-			else if (extension == "plymap") {
-				plyMapFile = fileName;
-				cout << "Reading ply map file:" << endl;
-				cout << fileName << endl;
-			}
-			else if (extension == "ive") {
-				iveFile = fileName;
-				cout << "Adding external ive file:" << endl;
-				cout << fileName << endl;
-			}
-			else if (fileName == "noTexture") {
-				noTexture = true;
-			}
-			else if (fileName == "noSave") {
-				noSave = true;
-			}
-			else if (fileName == "showTriangles") {
-				showTriangles = true;
-			}
-			else if (fileName == "showConvex") {
-				showConvex = true;
-			}
+		stringstream inFile;
+		inFile << argv[1];
+		string inFileStr = inFile.str();
+		size_t p = inFileStr.find_last_of(".");
+		string inExtension = inFileStr.substr(p+1);
+		if (inExtension == "ive")
+		{
+			noSave = true;
+			iveFile = inFileStr;
+		}
+		else
+		{
+
+
+			ifstream inputFile(argv[1]);
+			outputFile = string(argv[1]);
+			outputFile = outputFile.substr(0, outputFile.find_last_of(".")) + ".ive";
+
+			string fileName;
 			getline(inputFile, fileName);
+			while(inputFile){
+				size_t l = fileName.find_last_of("."); 
+				string extension = fileName.substr(l+1);
+				if(extension == "model") {
+					modelFile = fileName;
+					cout << "Reading model file:" << endl;
+					cout << fileName << endl;
+				}
+				else if(extension == "ply") {
+					plyFile = fileName;
+					cout << "Reading ply file:" << endl;
+					cout << fileName << endl;
+				}
+				else if (extension == "map") {
+					mapFile = fileName;
+					cout << "Reading map file:" << endl;
+					cout << fileName << endl;
+				}
+				else if (extension == "plymap") {
+					plyMapFile = fileName;
+					cout << "Reading ply map file:" << endl;
+					cout << fileName << endl;
+				}
+				else if (extension == "ive") {
+					iveFile = fileName;
+					cout << "Adding external ive file:" << endl;
+					cout << fileName << endl;
+				}
+				else if (fileName == "noTexture") {
+					noTexture = true;
+				}
+				else if (fileName == "noSave") {
+					noSave = true;
+				}
+				else if (fileName == "showTriangles") {
+					showTriangles = true;
+				}
+				else if (fileName == "showConvex") {
+					showConvex = true;
+				}
+				getline(inputFile, fileName);
+			}
 		}
 	}
 	else {
@@ -646,12 +664,12 @@ int main(int argc, char** argv)
     Group* root = new Group();
     vector<string> planeToImageFile;
     vector<Vec2Array*> planeToImageCoords;
-	if (plyFile == "")
+	if (modelFile != "")
 	{
 		parseMapFile(mapFile, planeToImageFile, planeToImageCoords);
 		parseModelFile(root, showConvex);
 	}
-	else
+	else if(plyFile != "")
 	{
 		parseMapFile(plyMapFile, planeToImageFile, planeToImageCoords);
 		parsePlyFile(root);
@@ -664,11 +682,11 @@ int main(int argc, char** argv)
 		//applyColors(root, showTriangles || showConvex);
 		applyTextures(root, planeToImageFile, planeToImageCoords);
 	}
-	addLighting(root);
 	if (iveFile != ""){
 		osg::ref_ptr<Node> otherModel = osgDB::readNodeFile(iveFile);
 		root->addChild(otherModel);
 	}
+	addLighting(root);
 	if (!noSave){
 		cout << "Saving ive file:" << endl;
 		cout << outputFile << endl;
@@ -681,7 +699,7 @@ int main(int argc, char** argv)
 
 	 	viewer.setUpViewOnSingleScreen(0);
 		viewer.setSceneData( root );
-		viewer.setCameraManipulator(new osgGA::OrbitManipulator());
+		viewer.setCameraManipulator(new osgGA::TrackballManipulator());
 		viewer.realize();
  
         while( !viewer.done() )

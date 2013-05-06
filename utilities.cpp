@@ -1,5 +1,4 @@
 #include "utilities.h"
-
 bool isConvex( DrawElementsUInt* poly, Vec2Array* vertices, int concave ){
 	//int threshhold = 5000.0;
 	//int threshhold = 0;
@@ -34,6 +33,7 @@ bool isConvex( DrawElementsUInt* poly, Vec2Array* vertices, int concave ){
 	}
 	return true;
 }
+
 
 DrawElementsUInt* combinePolygons( DrawElementsUInt* poly1, DrawElementsUInt* poly2){
 	DrawElementsUInt* candidatePoly = new DrawElementsUInt( PrimitiveSet::POLYGON, 0 );
@@ -71,22 +71,26 @@ DrawElementsUInt* combinePolygons( DrawElementsUInt* poly1, DrawElementsUInt* po
 	}
 	//insert places elements before selected location, so we go backwards when ordering is the same.
 	if (!opposite){
+		
 		for (int i = poly2->size()-1; i >= 0; --i) {
 			int index = (sharedIndex2 + i + 2) % poly2->size();
 			candidatePoly->insert(candidatePoly->begin() + sharedIndex1 + 1, poly2->at(index));
 		}
+		
 	}
 	else {
+		
 		int offset = sharedIndex1 + 1;
 		for (int i = 0; i < poly2->size() - 2; ++i) {
 			int index = (sharedIndex2 + i + 2) % poly2->size();
 			candidatePoly->insert(candidatePoly->begin() + offset, poly2->at(index));
 			offset += 1;
 		}
+		
 	}
 	return candidatePoly;
-
 }
+
 
 bool sameSide( Vec2 p1, Vec2 p2, Vec2 a, Vec2 b ) {
 	Vec3 p1_3d = Vec3(p1[0], p1[1], 0);

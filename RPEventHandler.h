@@ -1,3 +1,5 @@
+#ifndef RPEVENTHANDLER_H
+#define RPEVENTHANDLER_H
 #include "utilities.h"
 
 class RPEventHandler: public osgGA::GUIEventHandler
@@ -10,3 +12,5 @@ class RPEventHandler: public osgGA::GUIEventHandler
         virtual void accept(osgGA::GUIEventHandlerVisitor& v)   { v.visit(*this); };
 		Camera* camera;
 };
+
+#endif
