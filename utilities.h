@@ -12,6 +12,8 @@
 #include <osgDB/ReadFile> 
 #include <osgViewer/Viewer>
 #include <osg/PositionAttitudeTransform>
+#include <osgDB/WriteFile>
+#include <osgGA/DriveManipulator>
 #include <osgGA/TrackballManipulator>
 
 

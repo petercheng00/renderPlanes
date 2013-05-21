@@ -1,6 +1,5 @@
 #include "utilities.h"
 #include "RPEventHandler.h"
-#include <osgDB/WriteFile>
 
 string modelFile = "";
 string mapFile = "";
@@ -14,7 +13,7 @@ bool noTexture = false;
 bool noSave = false;
 bool showTriangles = false;
 bool showConvex = false;
-
+int screen = 0;
 //liberally borrowed from modeling.exe
 void doEarClipping( Geometry* planeGeometry, Vec2Array* planeVertices, bool makeConvex )
 {
@@ -560,6 +559,11 @@ void parseModelFile(Group* root, bool makeConvex) {
 }
 
 
+Vec3d eye = Vec3d(20000,20000,20000);
+Vec3d center = Vec3d(0,0,0);
+Vec3d up = Vec3d(0,1,0);
+
+
 bool RPEventHandler::handle(const osgGA::GUIEventAdapter& ea,osgGA::GUIActionAdapter& aa)
     {
     switch(ea.getEventType())
@@ -591,9 +595,27 @@ bool RPEventHandler::handle(const osgGA::GUIEventAdapter& ea,osgGA::GUIActionAda
 
 int main(int argc, char** argv)
 {
-	if (argc > 1){
+	int inFileInd = 1;
+	if (argc == 4)
+	{
+		if (strcmp(argv[1],"-s") == 0)
+		{
+			screen = atoi(argv[2]);
+			inFileInd = 3;
+		}
+		else if (strcmp(argv[2],"-s") == 0)
+		{
+			screen = atoi(argv[3]);
+		}
+		else
+		{
+			cerr << "Input could not be parsed" << endl;
+			return 0;
+		}
+	}
+	if (argc >= 2){
 		stringstream inFile;
-		inFile << argv[1];
+		inFile << argv[inFileInd];
 		string inFileStr = inFile.str();
 		size_t p = inFileStr.find_last_of(".");
 		string inExtension = inFileStr.substr(p+1);
@@ -604,10 +626,8 @@ int main(int argc, char** argv)
 		}
 		else
 		{
-
-
-			ifstream inputFile(argv[1]);
-			outputFile = string(argv[1]);
+			ifstream inputFile(argv[inFileInd]);
+			outputFile = string(argv[inFileInd]);
 			outputFile = outputFile.substr(0, outputFile.find_last_of(".")) + ".ive";
 
 			string fileName;
@@ -657,7 +677,7 @@ int main(int argc, char** argv)
 		}
 	}
 	else {
-		cout << "No input files, quitting" << endl;
+		cerr << "Input could not be parsed" << endl;
 		return 0;
 	}
     osgViewer::Viewer viewer;
@@ -674,7 +694,7 @@ int main(int argc, char** argv)
 		parseMapFile(plyMapFile, planeToImageFile, planeToImageCoords);
 		parsePlyFile(root);
 	}
-	cout << "Done Reading" << endl;
+	cout << "Done Reading Files" << endl;
 	if (noTexture){
 		applyColors(root, showTriangles || showConvex);
 	}
@@ -697,11 +717,12 @@ int main(int argc, char** argv)
 		RPEventHandler * myRPEventHandler = new RPEventHandler(viewer.getCamera());
 		viewer.addEventHandler(myRPEventHandler);
 
-	 	viewer.setUpViewOnSingleScreen(0);
+	 	viewer.setUpViewOnSingleScreen(screen);
 		viewer.setSceneData( root );
 		viewer.setCameraManipulator(new osgGA::TrackballManipulator());
+		cout << "rendering scene" << endl;
 		viewer.realize();
- 
+
         while( !viewer.done() )
         {
             viewer.frame();
